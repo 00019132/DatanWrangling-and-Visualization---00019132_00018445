@@ -1,0 +1,159 @@
+{
+  "course_structure": "there is 1 theoretical and one practical lesson.",
+  "schedule": [
+    {
+      "week": 1,
+      "topic": "Introduction, A practical example",
+      "lesson_objectives": [
+        "1. Theory",
+        "2. Learning the necessity of Data Manipulation;",
+        "3. Viewing of a practical example of the course outcome"
+      ],
+      "content_of_material": [
+        "Theory:",
+        "- Data size",
+        "- Course organization",
+        "- Administrates",
+        "- Afunctional Dash Program running on local host."
+      ]
+    },
+    {
+      "week": 2,
+      "topic": "General python revision and introduction to Numpy",
+      "lesson_objectives": [
+        "1 Theory",
+        "2. Revising basic Python concepts",
+        "3. Introducing Numpy Module",
+        "4. Using Numpy instruction for data import."
+      ],
+      "content_of_material": [
+        "- Tuples, lists",
+        "- List Comprehension technics in Python",
+        "- Advanced dictionary features",
+        "- Numpy basics"
+      ]
+    },
+    {
+      "week": 3,
+      "topic": "Numpy",
+      "lesson_objectives": [
+        "1. Using Numpy functions"
+      ],
+      "content_of_material": [
+        "- Creation of numpy arrays",
+        "- Reading numpy arrays from different sources",
+        "- Reshape arrays",
+        "- Indexing and search",
+        "- Slicing"
+      ]
+    },
+    {
+      "week": 4,
+      "topic": "Masking and aggregation",
+      "lesson_objectives": [
+        "1. Mastering concepts of aggregation and masking in tabular data"
+      ],
+      "content_of_material": [
+        "- Data Masking",
+        "- Data Aggregation"
+      ]
+    },
+    {
+      "week": 5,
+      "topic": "Tabular data and Introduction to Pandas",
+      "lesson_objectives": [
+        "1. Theory",
+        "2. Using tabular data",
+        "3. Choose tabular vs relational data",
+        "3. Using basic pandas features"
+      ],
+      "content_of_material": [
+        "- Series and Dataframes",
+        "- Row index and column name",
+        "- Manipulation of rows and lines"
+      ]
+    },
+    {
+      "week": 6,
+      "topic": "Data Aggregation, groupby and grouper",
+      "lesson_objectives": [
+        "1- Using groupby to aggregate data",
+        "2- Implementing multiple aggregation by groupers"
+      ],
+      "content_of_material": [
+        "- Groupby attributes",
+        "- Conditional groupby",
+        "- Time stamp grouper"
+      ]
+    },
+    {
+      "week": 7,
+      "topic": "Introduction to data Visualization,",
+      "lesson_objectives": [
+        "Introduction to Matplotllib",
+        "1. Learning basic techniques of data visualization",
+        "2. Using basic functions of Matplotlib"
+      ],
+      "content_of_material": [
+        "What can be visualized",
+        "- Why visualize",
+        "- Basic charts of matplotlib"
+      ]
+    },
+    {
+      "week": 8,
+      "topic": "Inclass test",
+      "lesson_objectives": [],
+      "content_of_material": []
+    },
+    {
+      "week": 9,
+      "topic": "Google sheets and dynamic data acquisition",
+      "lesson_objectives": [
+        "1. Learning basic techniques of data sharing via sheets"
+      ],
+      "content_of_material": [
+        "- how to use a remote spread sheet"
+      ]
+    },
+    {
+      "week": 10,
+      "topic": "Data Dashboards",
+      "lesson_objectives": [
+        "1. Use visualization to develop Dashboards",
+        "2. Implement Advanced Matplotlib functions"
+      ],
+      "content_of_material": [
+        "- Dashboards"
+      ]
+    },
+    {
+      "week": 11,
+      "topic": "Dynamic Dashboards and Plotly dash",
+      "lesson_objectives": [
+        "1. Learning what dynamic dashboards are",
+        "2. Use basic Dash functions"
+      ],
+      "content_of_material": [
+        "- Slicers",
+        "- Sliders",
+        "- Dash general organization"
+      ]
+    },
+    {
+      "week": 12,
+      "topic": "Semi structured data, Geodata",
+      "lesson_objectives": [
+        "1. Learn Json organization",
+        "2- Use Json in geodata",
+        "3- Implement geo visualization using folium"
+      ],
+      "content_of_material": [
+        "- Json example",
+        "- Folium",
+        "- House sale in us visualization",
+        "- Heatmaps"
+      ]
+    }
+  ]
+}
