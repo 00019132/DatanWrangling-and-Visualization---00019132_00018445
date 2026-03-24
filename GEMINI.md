@@ -42,7 +42,7 @@ We will avoid using advanced libraries or techniques not mentioned in the agenda
 
 We will build the application in the following order, focusing on one page at a time.
 
-*   **Phase 1: Project Setup & "Page A: Upload & Overview"**
+*   **Phase 1:  Project Setup & "Page A: Upload & Overview"**
     *   Set up the basic Streamlit application structure.
     *   Implement file uploaders for CSV, Excel, and JSON.
     *   Display data profiling: shape, columns, dtypes, summary stats, missing values, and duplicates count.
