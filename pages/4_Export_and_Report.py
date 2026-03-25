@@ -6,12 +6,12 @@ st.set_page_config(layout="wide")
 st.title("Export & Report")
 
 # Check if a dataframe exists in the session state
-if 'df' not in st.session_state or st.session_state.df is None:
+if 'df_history' not in st.session_state or not st.session_state.df_history:
     st.warning("Please upload and process a file first.")
     st.stop()
 
-# If a dataframe exists, get it from the session state
-df = st.session_state.df
+# Get the most recent dataframe from the history
+df = st.session_state.df_history[-1]
 
 # --- Data Export ---
 st.header("Export Cleaned Data")
@@ -19,8 +19,8 @@ st.write("Below is a preview of the cleaned data. Click the button to download i
 st.dataframe(df.head())
 
 @st.cache_data
-def convert_df_to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
+def convert_df_to_csv(df_to_convert):
+    return df_to_convert.to_csv(index=False).encode('utf-8')
 
 csv = convert_df_to_csv(df)
 
