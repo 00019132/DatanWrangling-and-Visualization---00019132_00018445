@@ -13,21 +13,24 @@ render_sidebar()
 st.title("2. Cleaning & Preparation Studio")
 
 # --- Helper Functions ---
-def log_action(log_message):
-    """Adds a timestamped message to the session state log."""
+def log_action(log_message, recipe_step):
+    """Adds a timestamped message to the log and a structured step to the recipe."""
     full_message = f"[{pd.Timestamp.now()}] {log_message}"
     st.session_state.log.append(full_message)
+    st.session_state.recipe.append(recipe_step)
     st.success(full_message)
 
-def update_dataframe(new_df, message):
+def update_dataframe(new_df, message, recipe_step):
     """Adds the new dataframe to the history and logs the action."""
     st.session_state.df_history.append(new_df)
-    log_action(message)
+    log_action(message, recipe_step)
     # Clear the preview state after a successful update
     if 'df_preview' in st.session_state:
         del st.session_state.df_preview
     if 'log_preview' in st.session_state:
         del st.session_state.log_preview
+    if 'recipe_preview' in st.session_state:
+        del st.session_state.recipe_preview
     st.rerun()
 
 def get_numeric_columns(df):
@@ -46,6 +49,7 @@ def display_preview():
     st.header("Preview Changes")
     preview_df = st.session_state.df_preview
     log_message = st.session_state.log_preview
+    recipe_step = st.session_state.recipe_preview
     original_df = st.session_state.df_history[-1]
 
     with st.container(border=True):
@@ -55,9 +59,9 @@ def display_preview():
         st.write(f"Operation: **{log_message}**")
         st.metric("Row Change", f"{row_diff:+,}", help="Number of rows that will be added or removed.")
         st.metric("Column Change", f"{col_diff:+,}", help="Number of columns that will be added or removed.")
-        
+
         st.subheader("Data Diff / Summary")
-        
+
         # Special case for scaling/normalization: show describe()
         if any(keyword in log_message for keyword in ["Scaled", "Standardized", "Encoded"]):
              st.write("Current Data Summary")
@@ -76,11 +80,12 @@ def display_preview():
         col1, col2, _ = st.columns([1, 1, 4])
         with col1:
             if st.button("✅ Confirm", use_container_width=True, type="primary"):
-                update_dataframe(preview_df, log_message)
+                update_dataframe(preview_df, log_message, recipe_step)
         with col2:
             if st.button("❌ Cancel", use_container_width=True):
                 del st.session_state.df_preview
                 del st.session_state.log_preview
+                del st.session_state.recipe_preview
                 st.rerun()
 
 # --- Initial Check ---
@@ -93,9 +98,11 @@ if 'df_preview' in st.session_state:
     display_preview()
     st.stop()
 
-# Initialize log if it doesn't exist
+# Initialize log and recipe if they don't exist
 if 'log' not in st.session_state:
     st.session_state.log = []
+if 'recipe' not in st.session_state:
+    st.session_state.recipe = []
 
 # Get the current dataframe
 df = st.session_state.df_history[-1]
@@ -123,9 +130,9 @@ with st.expander("1. Handle Missing Values", expanded=False):
     else:
         st.dataframe(missing_data, use_container_width=True)
         st.markdown("---")
-        
+
         cols_with_missing = df.columns[df.isnull().any()].tolist()
-        
+
         st.subheader("Per-Column Actions")
         with st.container(border=True):
             col1, col2 = st.columns(2)
@@ -133,7 +140,7 @@ with st.expander("1. Handle Missing Values", expanded=False):
 
             with col1:
                 selected_col = st.selectbox("Select a column to clean:", cols_with_missing, key="mv_col")
-            
+
             action_options = ["Drop rows", "Fill with Mode", "Forward Fill (ffill)", "Backward Fill (bfill)", "Fill with Constant"]
             if selected_col in numeric_cols:
                 action_options.insert(1, "Fill with Median")
@@ -148,35 +155,44 @@ with st.expander("1. Handle Missing Values", expanded=False):
             if st.button("Apply Per-Column Action", key="mv_apply_col"):
                 df_cleaned = df.copy()
                 log_msg = ""
+                recipe_step = {}
                 try:
                     if action == "Drop rows":
                         rows_before = len(df_cleaned)
                         df_cleaned.dropna(subset=[selected_col], inplace=True)
                         log_msg = f"Dropped {rows_before - len(df_cleaned)} rows with missing values in '{selected_col}'."
+                        recipe_step = {"action": "dropna", "parameters": {"subset": [selected_col]}}
                     elif action == "Forward Fill (ffill)":
                         df_cleaned[selected_col].ffill(inplace=True)
                         log_msg = f"Forward-filled missing values in '{selected_col}'."
+                        recipe_step = {"action": "fillna", "parameters": {"column": selected_col, "method": "ffill"}}
                     elif action == "Backward Fill (bfill)":
                         df_cleaned[selected_col].bfill(inplace=True)
                         log_msg = f"Backward-filled missing values in '{selected_col}'."
+                        recipe_step = {"action": "fillna", "parameters": {"column": selected_col, "method": "bfill"}}
                     elif action in ["Fill with Mean", "Fill with Median"]:
-                        fill_val = df_cleaned[selected_col].mean() if action == "Fill with Mean" else df_cleaned[selected_col].median()
+                        method = action.split(' ')[-1].lower()
+                        fill_val = df_cleaned[selected_col].mean() if method == "mean" else df_cleaned[selected_col].median()
                         df_cleaned[selected_col].fillna(fill_val, inplace=True)
-                        log_msg = f"Filled missing values in '{selected_col}' with {action.lower()} ({fill_val:.2f})."
+                        log_msg = f"Filled missing values in '{selected_col}' with {method} ({fill_val:.2f})."
+                        recipe_step = {"action": "fillna", "parameters": {"column": selected_col, "method": method}}
                     elif action == "Fill with Mode":
                         mode_val = df_cleaned[selected_col].mode()[0]
                         df_cleaned[selected_col].fillna(mode_val, inplace=True)
                         log_msg = f"Filled missing values in '{selected_col}' with mode ('{mode_val}')."
+                        recipe_step = {"action": "fillna", "parameters": {"column": selected_col, "method": "mode"}}
                     elif action == "Fill with Constant":
                         if 'constant_value' in locals() and constant_value:
                              df_cleaned[selected_col].fillna(constant_value, inplace=True)
                              log_msg = f"Filled missing values in '{selected_col}' with constant ('{constant_value}')."
+                             recipe_step = {"action": "fillna", "parameters": {"column": selected_col, "value": constant_value}}
                         else:
                             st.error("Please provide a constant value.")
                             st.stop()
-                    
+
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = log_msg
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
@@ -192,8 +208,10 @@ with st.expander("1. Handle Missing Values", expanded=False):
                 dropped_cols = list(cols_before - set(df_cleaned.columns))
                 if dropped_cols:
                     log_msg = f"Dropped columns with >{threshold}% missing values: {', '.join(dropped_cols)}"
+                    recipe_step = {"action": "drop_by_missing_threshold", "parameters": {"threshold_percent": threshold, "dropped_columns": dropped_cols}}
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = log_msg
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
                 else:
                     st.info("No columns met the threshold.")
@@ -211,16 +229,21 @@ with st.expander("2. Handle Duplicates", expanded=False):
             if st.button("🔍 Show Duplicate Rows", key="dup_show"):
                 dupes = df[df.duplicated(subset=subset, keep=False)]
                 st.dataframe(dupes, use_container_width=True)
-            
+
             st.markdown("---")
-            keep_option = st.radio("Which duplicate to keep?", ["first", "last", False], format_func=lambda x: str(x) if x else "Remove all", horizontal=True, key="dup_keep")
+            keep_option_map = {"first": "first", "last": "last", "Remove all": False}
+            keep_display = st.radio("Which duplicate to keep?", list(keep_option_map.keys()), horizontal=True, key="dup_keep")
+            keep_option = keep_option_map[keep_display]
+            
             if st.button("Remove Duplicates", key="dup_remove", type="primary"):
                 df_cleaned = df.copy()
                 rows_before = len(df_cleaned)
                 df_cleaned.drop_duplicates(subset=subset, keep=keep_option, inplace=True)
                 log_msg = f"Removed {rows_before - len(df_cleaned)} duplicate rows."
+                recipe_step = {"action": "drop_duplicates", "parameters": {"subset": subset, "keep": keep_option}}
                 st.session_state.df_preview = df_cleaned
                 st.session_state.log_preview = log_msg
+                st.session_state.recipe_preview = recipe_step
                 st.rerun()
     else:
         st.success("No duplicate rows found!")
@@ -243,8 +266,10 @@ with st.expander("3. Manage Data Types", expanded=False):
             else:
                 df_cleaned[col_to_convert] = df_cleaned[col_to_convert].astype(str)
             log_msg = f"Converted column '{col_to_convert}' to {new_type}."
+            recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": new_type}}
             st.session_state.df_preview = df_cleaned
             st.session_state.log_preview = log_msg
+            st.session_state.recipe_preview = recipe_step
             st.rerun()
         except Exception as e:
             st.error(f"Failed to convert: {e}")
@@ -256,7 +281,7 @@ with st.expander("4. Handle Categorical Data", expanded=False):
         st.info("No categorical columns found.")
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["Standardization", "Mapping", "Rare Grouping", "Encoding"])
-        
+
         with tab1:
             col1, col2 = st.columns(2)
             with col1:
@@ -271,8 +296,11 @@ with st.expander("4. Handle Categorical Data", expanded=False):
                     df_cleaned[cat_col_std] = df_cleaned[cat_col_std].str.lower()
                 else:
                     df_cleaned[cat_col_std] = df_cleaned[cat_col_std].str.title()
+                
+                recipe_step = {"action": "standardize_text", "parameters": {"column": cat_col_std, "method": std_action}}
                 st.session_state.df_preview = df_cleaned
                 st.session_state.log_preview = f"Applied '{std_action}' to '{cat_col_std}'."
+                st.session_state.recipe_preview = recipe_step
                 st.rerun()
 
         with tab2:
@@ -281,7 +309,7 @@ with st.expander("4. Handle Categorical Data", expanded=False):
                 unique_values = df[map_col].dropna().unique()
                 if len(unique_values) > 50:
                     st.warning(f"This column has {len(unique_values)} unique values. Manual mapping might be difficult.")
-                
+
                 map_df = pd.DataFrame({"Original": unique_values, "New": unique_values})
                 st.write("Edit 'New' column to map values:")
                 edited_map_df = st.data_editor(map_df, key="v_map_ed", use_container_width=True, height=300)
@@ -290,8 +318,10 @@ with st.expander("4. Handle Categorical Data", expanded=False):
                     if mapping:
                         df_cleaned = df.copy()
                         df_cleaned[map_col] = df_cleaned[map_col].replace(mapping)
+                        recipe_step = {"action": "map_values", "parameters": {"column": map_col, "mapping": mapping}}
                         st.session_state.df_preview = df_cleaned
                         st.session_state.log_preview = f"Mapped {len(mapping)} values in '{map_col}'."
+                        st.session_state.recipe_preview = recipe_step
                         st.rerun()
 
         with tab3:
@@ -306,8 +336,10 @@ with st.expander("4. Handle Categorical Data", expanded=False):
                 rare_cats = counts[counts < (threshold / 100)].index.tolist()
                 if rare_cats:
                     df_cleaned[group_col] = df_cleaned[group_col].replace(rare_cats, 'Other')
+                    recipe_step = {"action": "group_rare_categories", "parameters": {"column": group_col, "threshold_percent": threshold, "grouped_categories": rare_cats}}
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = f"Grouped {len(rare_cats)} rare categories in '{group_col}'."
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
 
         with tab4:
@@ -316,8 +348,10 @@ with st.expander("4. Handle Categorical Data", expanded=False):
             if st.button("Apply One-Hot Encoding"):
                 if cols_to_encode:
                     df_cleaned = pd.get_dummies(df, columns=cols_to_encode)
+                    recipe_step = {"action": "one_hot_encode", "parameters": {"columns": cols_to_encode}}
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = f"One-hot encoded: {', '.join(cols_to_encode)}."
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
 
 # --- 5. Clean Numeric Data (Outliers) ---
@@ -337,15 +371,19 @@ with st.expander("5. Clean Numeric Data (Outliers)", expanded=False):
             with col1:
                 if st.button("Remove Outliers"):
                     df_cleaned = df[(df[selected_num_col] >= lower) & (df[selected_num_col] <= upper)].copy()
+                    recipe_step = {"action": "remove_outliers_iqr", "parameters": {"column": selected_num_col}}
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = f"Removed outliers from '{selected_num_col}'."
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
             with col2:
                 if st.button("Cap Outliers"):
                     df_cleaned = df.copy()
                     df_cleaned[selected_num_col] = df_cleaned[selected_num_col].clip(lower, upper)
+                    recipe_step = {"action": "cap_outliers_iqr", "parameters": {"column": selected_num_col}}
                     st.session_state.df_preview = df_cleaned
                     st.session_state.log_preview = f"Capped outliers in '{selected_num_col}'."
+                    st.session_state.recipe_preview = recipe_step
                     st.rerun()
 
 # --- 6. Normalize and Scale Data ---
@@ -364,22 +402,27 @@ with st.expander("6. Normalize and Scale Data", expanded=False):
                         df_cleaned[col] = (df_cleaned[col] - df_cleaned[col].min()) / (df_cleaned[col].max() - df_cleaned[col].min())
                     else:
                         df_cleaned[col] = (df_cleaned[col] - df_cleaned[col].mean()) / df_cleaned[col].std()
+                recipe_step = {"action": "scale_data", "parameters": {"columns": cols_to_scale, "method": method}}
                 st.session_state.df_preview = df_cleaned
                 st.session_state.log_preview = f"Applied {method} to {', '.join(cols_to_scale)}."
+                st.session_state.recipe_preview = recipe_step
                 st.rerun()
 
 # --- 7. Column Operations ---
 with st.expander("7. Column Operations", expanded=False):
     tab1, tab2, tab3 = st.tabs(["Drop/Rename", "Arithmetic", "Concatenate"])
-    
+
     with tab1:
         st.subheader("Drop Columns")
         cols_to_drop = st.multiselect("Select to drop", df.columns.tolist(), key="drop_cols")
         if st.button("Drop Selected"):
-            st.session_state.df_preview = df.drop(columns=cols_to_drop)
-            st.session_state.log_preview = f"Dropped: {', '.join(cols_to_drop)}."
-            st.rerun()
-            
+            if cols_to_drop:
+                recipe_step = {"action": "drop_columns", "parameters": {"columns": cols_to_drop}}
+                st.session_state.df_preview = df.drop(columns=cols_to_drop)
+                st.session_state.log_preview = f"Dropped: {', '.join(cols_to_drop)}."
+                st.session_state.recipe_preview = recipe_step
+                st.rerun()
+
     with tab2:
         st.subheader("Arithmetic Column")
         num_cols = get_numeric_columns(df)
@@ -389,14 +432,17 @@ with st.expander("7. Column Operations", expanded=False):
         op = c2.selectbox("Operation", ["+", "-", "*", "/"], key="arith_op")
         op2 = c3.selectbox("Op 2", num_cols, key="arith_op2")
         if st.button("Create Arithmetic Column"):
-            df_cleaned = df.copy()
-            if op == "+": df_cleaned[col_name] = df[op1] + df[op2]
-            elif op == "-": df_cleaned[col_name] = df[op1] - df[op2]
-            elif op == "*": df_cleaned[col_name] = df[op1] * df[op2]
-            else: df_cleaned[col_name] = df[op1] / df[op2]
-            st.session_state.df_preview = df_cleaned
-            st.session_state.log_preview = f"Created arithmetic column '{col_name}'."
-            st.rerun()
+            if col_name and op1 and op and op2:
+                df_cleaned = df.copy()
+                if op == "+": df_cleaned[col_name] = df[op1] + df[op2]
+                elif op == "-": df_cleaned[col_name] = df[op1] - df[op2]
+                elif op == "*": df_cleaned[col_name] = df[op1] * df[op2]
+                else: df_cleaned[col_name] = df[op1] / df[op2]
+                recipe_step = {"action": "create_arithmetic_column", "parameters": {"new_column": col_name, "op1": op1, "operator": op, "op2": op2}}
+                st.session_state.df_preview = df_cleaned
+                st.session_state.log_preview = f"Created arithmetic column '{col_name}'."
+                st.session_state.recipe_preview = recipe_step
+                st.rerun()
 
     with tab3:
         st.subheader("Concatenate Text Columns")
@@ -407,8 +453,11 @@ with st.expander("7. Column Operations", expanded=False):
         col_b = c2.selectbox("Second column", cat_cols, key="concat_b")
         sep = st.text_input("Separator:", value=" ", key="concat_sep")
         if st.button("Create Concatenated Column"):
-            df_cleaned = df.copy()
-            df_cleaned[new_name] = df_cleaned[col_a].astype(str) + sep + df_cleaned[col_b].astype(str)
-            st.session_state.df_preview = df_cleaned
-            st.session_state.log_preview = f"Concatenated '{col_a}' and '{col_b}' into '{new_name}'."
-            st.rerun()
+            if new_name and col_a and col_b:
+                df_cleaned = df.copy()
+                df_cleaned[new_name] = df_cleaned[col_a].astype(str) + sep + df_cleaned[col_b].astype(str)
+                recipe_step = {"action": "concatenate_columns", "parameters": {"new_column": new_name, "col_a": col_a, "col_b": col_b, "separator": sep}}
+                st.session_state.df_preview = df_cleaned
+                st.session_state.log_preview = f"Concatenated '{col_a}' and '{col_b}' into '{new_name}'."
+                st.session_state.recipe_preview = recipe_step
+                st.rerun()
