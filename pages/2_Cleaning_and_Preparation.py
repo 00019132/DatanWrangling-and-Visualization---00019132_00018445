@@ -250,23 +250,94 @@ with st.expander("2. Handle Duplicates", expanded=False):
 
 # --- 3. Manage Data Types ---
 with st.expander("3. Manage Data Types", expanded=False):
+    st.subheader("Clean Numeric Strings")
+    st.info("Use this tool to remove common non-numeric characters (e.g., $, ,, %) before converting the column type.")
+    
+    # UI for cleaning numeric strings
+    col_to_clean_numeric = st.selectbox(
+        "Select column to clean", 
+        options=df.columns.tolist(), 
+        key="clean_numeric_col"
+    )
+    
+    predefined_chars = st.multiselect(
+        "Common characters to remove",
+        options=[',', '$', '€', '£', '%', ' '],
+        default=[',', '$'],
+        key="clean_numeric_chars_predefined"
+    )
+
+    custom_chars_input = st.text_input(
+        "Custom characters to remove (enter without spaces, e.g., #!)",
+        key="clean_numeric_chars_custom"
+    )
+
+    all_chars_to_remove = list(predefined_chars)
+    if custom_chars_input:
+        all_chars_to_remove.extend(list(custom_chars_input))
+    # Remove duplicates from the combined list
+    all_chars_to_remove = list(dict.fromkeys(all_chars_to_remove))
+
+    if st.button("Clean Numeric Column", key="clean_numeric_apply"):
+        if col_to_clean_numeric and all_chars_to_remove:
+            df_cleaned = df.copy()
+            # Ensure the column is of string type for replacement
+            df_cleaned[col_to_clean_numeric] = df_cleaned[col_to_clean_numeric].astype(str)
+            for char in all_chars_to_remove:
+                df_cleaned[col_to_clean_numeric] = df_cleaned[col_to_clean_numeric].str.replace(char, '', regex=False)
+            
+            log_msg = f"Removed characters ('{', '.join(all_chars_to_remove)}') from '{col_to_clean_numeric}'."
+            recipe_step = {
+                "action": "clean_numeric_string",
+                "parameters": {
+                    "column": col_to_clean_numeric,
+                    "chars_to_remove": all_chars_to_remove
+                }
+            }
+            
+            st.session_state.df_preview = df_cleaned
+            st.session_state.log_preview = log_msg
+            st.session_state.recipe_preview = recipe_step
+            st.rerun()
+
+    st.markdown("---")
+    
     st.subheader("Convert Column Type")
     col1, col2 = st.columns(2)
     with col1:
         col_to_convert = st.selectbox("Column to convert", df.columns.tolist(), key="type_col")
     with col2:
         new_type = st.selectbox("New data type", ["string", "numeric", "datetime"], key="type_new")
+
+    datetime_format = None
+    if new_type == "datetime":
+        datetime_format = st.text_input(
+            "Enter date format (optional)",
+            placeholder="%Y-%m-%d %H:%M:%S",
+            help="E.g., `%d/%m/%Y`. [strftime format codes](https://strftime.org/)"
+        )
+
     if st.button("Convert Data Type", key="type_convert"):
         df_cleaned = df.copy()
         try:
             if new_type == "numeric":
                 df_cleaned[col_to_convert] = pd.to_numeric(df_cleaned[col_to_convert], errors='coerce')
+                log_msg = f"Converted column '{col_to_convert}' to numeric."
+                recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": "numeric"}}
             elif new_type == "datetime":
-                df_cleaned[col_to_convert] = pd.to_datetime(df_cleaned[col_to_convert], errors='coerce')
+                if datetime_format:
+                    df_cleaned[col_to_convert] = pd.to_datetime(df_cleaned[col_to_convert], format=datetime_format, errors='coerce')
+                    log_msg = f"Converted column '{col_to_convert}' to datetime using format '{datetime_format}'."
+                    recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": "datetime", "format": datetime_format}}
+                else:
+                    df_cleaned[col_to_convert] = pd.to_datetime(df_cleaned[col_to_convert], errors='coerce')
+                    log_msg = f"Auto-converted column '{col_to_convert}' to datetime."
+                    recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": "datetime", "format": "auto"}}
             else:
                 df_cleaned[col_to_convert] = df_cleaned[col_to_convert].astype(str)
-            log_msg = f"Converted column '{col_to_convert}' to {new_type}."
-            recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": new_type}}
+                log_msg = f"Converted column '{col_to_convert}' to string."
+                recipe_step = {"action": "convert_type", "parameters": {"column": col_to_convert, "new_type": "string"}}
+            
             st.session_state.df_preview = df_cleaned
             st.session_state.log_preview = log_msg
             st.session_state.recipe_preview = recipe_step
@@ -410,7 +481,7 @@ with st.expander("6. Normalize and Scale Data", expanded=False):
 
 # --- 7. Column Operations ---
 with st.expander("7. Column Operations", expanded=False):
-    tab1, tab2, tab3 = st.tabs(["Drop/Rename", "Arithmetic", "Concatenate"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Drop", "Rename", "Arithmetic", "Concatenate"])
 
     with tab1:
         st.subheader("Drop Columns")
@@ -424,6 +495,34 @@ with st.expander("7. Column Operations", expanded=False):
                 st.rerun()
 
     with tab2:
+        st.subheader("Rename Columns")
+        cols_to_rename = st.multiselect(
+            "Select columns to rename",
+            options=df.columns.tolist(),
+            key="rename_cols_select"
+        )
+        
+        rename_mapping = {}
+        if cols_to_rename:
+            for col in cols_to_rename:
+                new_name = st.text_input(f"New name for '{col}'", value=col, key=f"rename_col_{col}")
+                if new_name and new_name != col:
+                    rename_mapping[col] = new_name
+        
+        if st.button("Apply Renaming", key="rename_apply"):
+            if not rename_mapping:
+                st.warning("Please provide new names for the selected columns.")
+            else:
+                df_cleaned = df.rename(columns=rename_mapping)
+                log_msg = f"Renamed columns: {', '.join([f'{k} -> {v}' for k, v in rename_mapping.items()])}"
+                recipe_step = {"action": "rename_columns", "parameters": {"mapping": rename_mapping}}
+                
+                st.session_state.df_preview = df_cleaned
+                st.session_state.log_preview = log_msg
+                st.session_state.recipe_preview = recipe_step
+                st.rerun()
+
+    with tab3:
         st.subheader("Arithmetic Column")
         num_cols = get_numeric_columns(df)
         col_name = st.text_input("New name:", key="arith_name")
@@ -444,7 +543,7 @@ with st.expander("7. Column Operations", expanded=False):
                 st.session_state.recipe_preview = recipe_step
                 st.rerun()
 
-    with tab3:
+    with tab4:
         st.subheader("Concatenate Text Columns")
         cat_cols = get_categorical_columns(df)
         new_name = st.text_input("New column name:", value="joined_text", key="concat_name")
