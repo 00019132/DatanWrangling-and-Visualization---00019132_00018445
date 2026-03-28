@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(layout="wide")
-
-st.title("Export & Report")
+st.title("4. Export and Report")
 
 # Check if a dataframe exists in the session state
 if 'df_history' not in st.session_state or not st.session_state.df_history:
@@ -40,7 +38,8 @@ if 'log' in st.session_state and st.session_state.log:
     st.write("The following transformations were performed:")
     
     # Display the log
-    log_content = "\n".join(st.session_state.log)
+    log_content = "
+".join(st.session_state.log)
     st.text_area("Log", log_content, height=200)
 
     # Download button for the log

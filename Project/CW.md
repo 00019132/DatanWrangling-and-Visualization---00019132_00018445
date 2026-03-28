@@ -92,37 +92,74 @@ Include:
 * Create new column using: simple formulas (e.g., ColA + ColB) or string concatenation.
 
 5) Interactive Visualization Builder (Required)
-The app must allow users to create at least 4 types of charts using Plotly, Altair, or Seaborn/Matplotlib:
-* Bar/Column chart
-* Line chart
-* Scatter plot
-* Box plot or Histogram
-Users must be able to select: X-axis, Y-axis, Color/Group-by column.
+Your app must include a “choose your chart” experience:
+    • User selects:
+        ◦ plot type
+        ◦ x and y columns
+        ◦ optional color/group column
+        ◦ optional aggregation (sum/mean/count/median)
+    • Must support at least 6 chart types total:
+        1. histogram
+        2. box plot
+        3. scatter plot
+        4. line chart (time series)
+        5. bar chart (grouped)
+        6. heatmap or correlation matrix (numeric only)
+    • Must support:
+        ◦ filtering (by category and numeric range at least)
+        ◦ showing “top N” categories for bar charts
+    • Use matplotlib (required) + you may use Plotly or other modules(optional).
 
 6) Session State & Robustness (Required)
-* The app must use Streamlit Session State to keep track of the “current” dataframe after each transformation.
-* Implement error handling (try-except) to prevent the app from crashing if a user applies an invalid transformation (e.g., trying to scale a string column).
+6.1 Transformation Log   Required
+Maintain a transformation log stored in session:
+    • each step: operation name + parameters + affected columns
+    • show log to the user
+    • allow “undo last step” OR “reset all” (one is required)
+6.2 Performance   Required
+    • Must not re-run heavy steps unnecessarily:
+        ◦ use st.cache_data for loading and profiling
+        ◦ keep a working dataframe in st.session_state
+6.3 Safety / Guardrails   Required
+    • Don’t crash on bad input.
+    • Show user-friendly error messages.
+    • Validate column selections (e.g., scaling only numeric columns).
 
-7) Deployment (Required)
-* Your project must be deployed on Streamlit Community Cloud (free) or a similar cloud provider. Provide the URL in your submission.
+7) AI Assistance (Allowed, Optional Feature)
+You may optionally integrate an LLM API (OpenAI or other) to enhance the app. If included, it must be:
+    • Optional toggle (“Enable AI assistant”)
+    • Works without AI (full required features must still work)
+    • Clearly labeled that outputs may be imperfect
+Optional AI features (choose any)
+    1. Natural language cleaning command
+        ◦ user types: “replace nulls in price with median and standardize category casing”
+        ◦ app suggests operations + asks user to confirm
+    2. Chart suggestion
+        ◦ “Given these columns, recommend good visualizations”
+    3. Code snippet generator
+        ◦ generate pandas code representing the transformation recipe
+    4. Data dictionary generator
+        ◦ infer column meaning + likely issues
 
-8) Deliverables (What to Submit) READ CAREFULLY ANY submission with missing part will be rejected, your work should contain all required documents or it will not be evaluated
-ZIP containing:
-* app.py (or streamlit_app.py)
-* requirements.txt
-* README.md
-* sample_data/ with at least two datasets
-* All chat and prompts used from A to Z for the dev
-* Short demo video (3–5 minutes) :
-    * upload data
-    * clean missing values + categories
-    * normalize numeric columns
-    * build 2–3 visualizations
-    * export cleaned data + report
-* Transformation report output (example file)
-* AI_USAGE.md (required even if you didn’t use AI): what you verified manually
-* The URL of your streamlit app deployed on streamlit site
-* A 2 page maximum report, where AI use is strictly forbidden. The report should explain your journey as a team during this project, how you did it what was difficult what was easy what you learnt.
+8) Deliverables (What to Submit) READ CAREFULLY  ANY submission with missing part will be rejected, your work should contain all required documents or it will not be evaluated
+    1.  ZIP containing:
+        ◦ app.py (or streamlit_app.py)
+        ◦ requirements.txt
+        ◦ README.md
+        ◦ sample_data/ with at least two datasets
+        ◦ All chat and prompts used from A to Z for the dev
+    2. Short demo video (3–5 minutes):
+        ◦ upload data
+        ◦ clean missing values + categories
+        ◦ normalize numeric columns
+        ◦ build 2–3 visualizations
+        ◦ export cleaned data + report
+    3. Transformation report output (example file)
+    4. AI_USAGE.md (required even if you didn’t use AI):
+        ◦ what you verified manually
+    5. The URL of your streamlit app deployed on streamlit site
+    6. A 2 page maximum report, where AI use is strictly forbidden. The report should explain your journey as a team during this project, how you did it what was difficult what was easy what you learnt.
+
 
 9) Grading Rubric (100 points)
 Core Functionality (60)
