@@ -129,10 +129,14 @@ def render_sidebar():
                 on_change=sync_api_source,
                 label_visibility="collapsed"
             )
-
+            
             if st.session_state.api_key_source_persistent == "Use Default Key":
-                st.session_state.api_key = "AIzaSyBh-RqGzpG7ABkz1DihufAAs4E5uuLejPQ"
-                st.success("Default AI key is active.")
+                if "GEMINI_API_KEY" in st.secrets:
+                    st.session_state.api_key = st.secrets["GEMINI_API_KEY"]
+                    st.success("Default AI key from Streamlit secrets is active.")
+                else:
+                    st.error("GEMINI_API_KEY secret not found. Please set it in Streamlit secrets or choose 'Use My Own Key'.")
+                    st.session_state.api_key = None
 
             elif st.session_state.api_key_source_persistent == "Use My Own Key":
                 st.text_input(
