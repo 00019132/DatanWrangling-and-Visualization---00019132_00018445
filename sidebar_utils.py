@@ -55,6 +55,19 @@ def render_sidebar():
     AI assistant controls, and session management buttons. This function
     also contains the logic for processing data from the selected source.
     """
+    # --- Callbacks for Decoupled State Management ---
+    def sync_ai_toggle():
+        """Syncs the toggle's temporary widget state to the persistent state."""
+        st.session_state.use_ai_assistant_persistent = st.session_state.ai_toggle_widget
+
+    def sync_api_source():
+        """Syncs the radio's temporary widget state to the persistent state."""
+        st.session_state.api_key_source_persistent = st.session_state.api_radio_widget
+
+    def sync_user_api_key():
+        """Syncs the text input's temporary widget state to the persistent state."""
+        st.session_state.user_api_key_input_persistent = st.session_state.api_text_widget
+
     # Initialize uploaded_file to None to ensure it's always defined
     uploaded_file = None
 
@@ -70,7 +83,7 @@ def render_sidebar():
                 st.session_state.gdrive_url = ""
 
             uploaded_file = st.file_uploader(
-                "Choose a CSV, XLSX, or JSON file", 
+                "Choose a CSV, XLSX, or JSON file",
                 type=["csv", "xlsx", "json"],
                 help="Upload your data file to get started.",
                 on_change=clear_gdrive_url_on_file_upload
@@ -98,33 +111,40 @@ def render_sidebar():
 
         st.divider()
 
-        # --- AI and Session Management (always visible) ---
+        # --- AI and Session Management (using decoupled state pattern) ---
         st.header("2. AI Assistant")
-        use_ai_assistant = st.toggle("Enable AI Assistant")
+        st.toggle(
+            "Enable AI Assistant",
+            value=st.session_state.use_ai_assistant_persistent,
+            key="ai_toggle_widget",
+            on_change=sync_ai_toggle,
+        )
 
-        if use_ai_assistant:
-            # ... (rest of AI assistant logic is unchanged)
+        if st.session_state.use_ai_assistant_persistent:
             st.radio(
                 "Select your API Key source:",
                 ("Use Default Key", "Use My Own Key"),
-                key="api_key_source",
+                index=0 if st.session_state.api_key_source_persistent == "Use Default Key" else 1,
+                key="api_radio_widget",
+                on_change=sync_api_source,
                 label_visibility="collapsed"
             )
-            if st.session_state.api_key_source == "Use Default Key":
-                try:
-                    st.session_state.api_key = st.secrets["GEMINI_API_KEY"]
-                    st.success("Default AI key is active.")
-                except (KeyError, FileNotFoundError):
-                    st.session_state.api_key = None
-            
-            elif st.session_state.api_key_source == "Use My Own Key":
-                user_api_key = st.text_input(
+
+            if st.session_state.api_key_source_persistent == "Use Default Key":
+                st.session_state.api_key = "AIzaSyBh-RqGzpG7ABkz1DihufAAs4E5uuLejPQ"
+                st.success("Default AI key is active.")
+
+            elif st.session_state.api_key_source_persistent == "Use My Own Key":
+                st.text_input(
                     "Enter your Gemini API Key:",
                     type="password",
+                    value=st.session_state.user_api_key_input_persistent,
+                    key="api_text_widget",
+                    on_change=sync_user_api_key,
                     help="Your key is used for AI features and is not stored."
                 )
-                if user_api_key:
-                    st.session_state.api_key = user_api_key
+                if st.session_state.user_api_key_input_persistent:
+                    st.session_state.api_key = st.session_state.user_api_key_input_persistent
                     st.success("API Key saved for this session.")
                 else:
                     st.session_state.api_key = None
@@ -167,4 +187,3 @@ def render_sidebar():
             st.session_state.last_uploaded_file = None
             st.success("Successfully loaded data from Google Sheet.")
             st.rerun()
-

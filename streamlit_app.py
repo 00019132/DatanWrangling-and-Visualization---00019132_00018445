@@ -8,11 +8,23 @@ st.set_page_config(
 )
 
 # --- Session State Initialization ---
-# Initialize required session state keys. The sidebar component will manage the rest.
+# Centralize all session state keys here for robust multi-page behavior.
+# These are the "source of truth" persistent variables.
 if 'df_history' not in st.session_state:
     st.session_state.df_history = []
 if 'log' not in st.session_state:
     st.session_state.log = []
+
+# AI assistant persistent state
+if "use_ai_assistant_persistent" not in st.session_state:
+    st.session_state.use_ai_assistant_persistent = False
+if "api_key_source_persistent" not in st.session_state:
+    st.session_state.api_key_source_persistent = "Use Default Key"
+if "user_api_key_input_persistent" not in st.session_state:
+    st.session_state.user_api_key_input_persistent = ""
+if "api_key" not in st.session_state:
+    st.session_state.api_key = None
+
 
 # --- Render the shared sidebar ---
 # This also handles all data loading and session management logic.
